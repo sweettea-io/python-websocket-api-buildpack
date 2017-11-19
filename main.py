@@ -85,7 +85,7 @@ def perform(team=None, team_uid=None, prediction=None, prediction_uid=None):
   # Create API
   print('Creating API...')
   app = Flask(__name__)
-  api = Api(app=app, version='0.0.1', title='{} api'.format(prediction), app)
+  api = Api(app=app, version='0.0.1', title='{} api'.format(prediction))
   namespace = api.namespace('api')
 
   if os.environ.get('ENVIRON') == 'prod' and os.environ.get('REQUIRE_SSL') == 'true':
