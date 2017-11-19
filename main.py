@@ -88,6 +88,7 @@ def perform(team=None, team_uid=None, prediction=None, prediction_uid=None):
   api = Api(app=app, version='0.0.1', title='{} api'.format(prediction))
   namespace = api.namespace('api')
 
+  # Force SSL if on prod and that's desired
   if os.environ.get('ENVIRON') == 'prod' and os.environ.get('REQUIRE_SSL') == 'true':
     from flask_sslify import SSLify
     SSLify(app)
