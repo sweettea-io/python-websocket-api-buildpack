@@ -13,4 +13,4 @@ def fetch(local_path, team, team_uid, prediction):
   bucket_name = '{}-{}'.format(team, team_uid)
   bucket = s3.Bucket(bucket_name)
 
-  # Get file at cloud_path and save to local_path
+  bucket.download_file(cloud_path, local_path)

@@ -61,8 +61,15 @@ def define_endpoints(api, namespace, predict=None):
   @namespace.route('/predict')
   class Predict(Resource):
     def post(self):
-      predict(api.payload)
-      return '', 200
+      payload = api.payload or {}
+
+      try:
+        prediction = predict(payload)
+      except BaseException as e:
+        print('Error making prediction: {}'.format(e))
+        return '', 500
+
+      return prediction, 200
 
 
 def perform(team=None, team_uid=None, prediction=None, prediction_uid=None):
@@ -80,7 +87,7 @@ def perform(team=None, team_uid=None, prediction=None, prediction_uid=None):
 
   # Fetch the latest model from S3
   print('Fetching lastest model from S3...')
-  model_fetcher.fetch(config.get('model'), team, team_uid, prediction)
+  # model_fetcher.fetch(config.get('model'), team, team_uid, prediction)
 
   # Create API
   print('Creating API...')
