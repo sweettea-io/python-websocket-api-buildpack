@@ -9,3 +9,4 @@ RUN pip install Flask
 RUN pip install flask-restplus
 RUN pip install Flask-SSLify
 RUN pip install boto3
+RUN pip install yaml
