@@ -6,7 +6,6 @@ from flask_restplus import Api, Resource
 
 
 def get_envs():
-  print('Validating envs...')
   env = os.environ
 
   # Required ENV vars
@@ -78,19 +77,15 @@ def perform(team=None, team_uid=None, prediction=None, prediction_uid=None):
   definitions = get_src_mod(prediction_uid, 'definitions')
 
   # Read the provided config file
-  print('Reading config info...')
   config = read_config(getattr(definitions, 'config_path'))
 
   # Get ref to the exported predict method
-  print('Finding predict method...')
   predict_method = get_predict_method(config)
 
   # Fetch the latest model from S3
-  print('Fetching lastest model from S3...')
   # model_fetcher.fetch(config.get('model'), team, team_uid, prediction)
 
   # Create API
-  print('Creating API...')
   app = Flask(__name__)
   api = Api(app=app, version='0.0.1', title='{} api'.format(prediction))
   namespace = api.namespace('api')
@@ -101,11 +96,9 @@ def perform(team=None, team_uid=None, prediction=None, prediction_uid=None):
     SSLify(app)
 
   # Define endpoints for api
-  print('Adding endpoints...')
   define_endpoints(api, namespace, predict=predict_method)
 
   # Start Flask app
-  print('Starting API...')
   port = int(os.environ.get('PORT', 80))
   app.run(host='0.0.0.0', port=port)
 
