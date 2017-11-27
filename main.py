@@ -11,6 +11,7 @@ def get_envs():
     'AWS_ACCESS_KEY_ID': False,
     'AWS_SECRET_ACCESS_KEY': False,
     'AWS_REGION_NAME': False,
+    'S3_BUCKET_NAME': True,
     'DATASET_DB_URL': False,
     'TEAM': True,
     'TEAM_UID': True,
@@ -78,25 +79,42 @@ def define_endpoints(api, namespace, predict=None):
       return prediction, 200
 
 
-def perform(team=None, team_uid=None, prediction=None, prediction_uid=None):
+def perform(team=None, team_uid=None, prediction=None, prediction_uid=None, s3_bucket_name=None):
   # We need to use importlib.import_module to access our src/ files since src/ will
   # be renamed to <prediction_uid>/ to avoid conflicts with user's project files
 
   # Get refs to the modules inside our src directory
+  print('Importing modules...')
   model_fetcher = get_src_mod(prediction_uid, 'model_fetcher')
   definitions = get_src_mod(prediction_uid, 'definitions')
 
   # Read the config file in the project
+  print('Validating config...')
   config_path = getattr(definitions, 'config_path')
   config = read_config(config_path)
 
   # Get ref to the exported predict method
+  print('Getting ref to predict method...')
   predict_method = get_predict_method(config)
 
   # Fetch the latest model from S3
-  model_fetcher.fetch(config.get('model'), team, team_uid, prediction)
+  model_path = config.get('model')
+
+  if '.' in model_path:
+    model_file_type = model_path.split('.').pop()
+    cloud_path = prediction + '.' + model_file_type
+  else:
+    cloud_path = prediction
+
+  save_path = os.path.abspath(os.path.join(os.path.dirname(__file__), model_path))
+
+  print('Fetching latest model...')
+  model_fetcher.fetch(cloud_path=cloud_path,
+                      bucket=s3_bucket_name,
+                      save_to=save_path)
 
   # Create API
+  print('Configuring Flask API...')
   app = Flask(__name__)
   api = Api(app=app, version='0.0.1', title='{} API'.format(prediction))
   namespace = api.namespace('api')
