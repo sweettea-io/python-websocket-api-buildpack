@@ -13,6 +13,7 @@ def get_envs():
     'AWS_REGION_NAME': False,
     'S3_BUCKET_NAME': True,
     'DATASET_DB_URL': False,
+    'DATASET_TABLE_NAME': False,
     'TEAM': True,
     'TEAM_UID': True,
     'PREDICTION': True,
