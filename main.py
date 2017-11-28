@@ -70,8 +70,15 @@ def define_endpoints(api, namespace, predict=None):
   @namespace.route('/predict')
   class Predict(Resource):
     def post(self):
+      # Get payload
       try:
-        prediction = predict(api.payload or {})
+        payload = api.payload or {}
+      except BaseException:
+        payload = {}
+
+      # Get prediction
+      try:
+        prediction = predict(payload)
       except BaseException as e:
         print('Error making prediction: {}'.format(e))
         return '', 500
