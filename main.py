@@ -42,9 +42,7 @@ def read_config(config_path):
 
 
 def get_predict_method(config):
-  split_path_info = config.get('predict').split('.')
-  predict_func_str = split_path_info.pop()
-  predict_mod_str = '.'.join(split_path_info)
+  predict_mod_str, predict_func_str = config.get('predict').split(':')
 
   if not predict_mod_str:
     print('No module specified for predicting. Only the function was specified.')
