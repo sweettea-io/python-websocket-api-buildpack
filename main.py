@@ -116,23 +116,15 @@ def perform(team=None, team_uid=None, prediction=None, prediction_uid=None, s3_b
                       save_to=save_path)
 
   # Create API
-  app = Flask(__name__)
-  api = Api(app=app, version='0.0.1', title='{} API'.format(prediction))
+  flask_app = Flask(__name__)
+  api = Api(app=flask_app, version='0.0.1', title='{} API'.format(prediction))
   namespace = api.namespace('api')
-
-  # Force SSL if on prod and requested
-  if os.environ.get('ENVIRON') == 'prod' and os.environ.get('REQUIRE_SSL') == 'true':
-    from flask_sslify import SSLify
-    SSLify(app)
 
   # Define endpoints for api
   define_endpoints(api, namespace, predict=predict_method)
 
-  # Start Flask app
-  port = int(os.environ.get('PORT', 80))
-  app.run(host='0.0.0.0', port=port)
+  return flask_app
 
 
-if __name__ == '__main__':
-  params = get_envs()
-  perform(**params)
+params = get_envs()
+app = perform(**params)
