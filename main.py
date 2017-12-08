@@ -14,8 +14,6 @@ def get_envs():
     'S3_BUCKET_NAME': True,
     'DATASET_DB_URL': False,
     'DATASET_TABLE_NAME': False,
-    'TEAM': True,
-    'TEAM_UID': True,
     'PREDICTION': True,
     'PREDICTION_UID': True
   }
@@ -65,10 +63,7 @@ def get_src_mod(src, name):
   return importlib.import_module('{}.{}'.format(src, name))
 
 
-def perform(team=None, team_uid=None, prediction=None, prediction_uid=None, s3_bucket_name=None):
-  # We need to use importlib.import_module to access our src/ files since src/ will
-  # be renamed to <prediction_uid>/ to avoid conflicts with user's project files
-
+def perform(prediction=None, prediction_uid=None, s3_bucket_name=None):
   # Get refs to the modules inside our src directory
   model_fetcher = get_src_mod(prediction_uid, 'model_fetcher')
   definitions = get_src_mod(prediction_uid, 'definitions')
@@ -104,7 +99,7 @@ predict = perform(**params)
 
 app = Flask(__name__)
 
-api = Api(app=app, version='0.0.1', title='API')
+api = Api(version='0.0.1', title='API')
 
 namespace = api.namespace('api')
 
