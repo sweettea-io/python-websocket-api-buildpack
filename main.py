@@ -65,26 +65,6 @@ def get_src_mod(src, name):
   return importlib.import_module('{}.{}'.format(src, name))
 
 
-def define_endpoints(api, namespace, predict=None):
-  @namespace.route('/predict')
-  class Predict(Resource):
-    def post(self):
-      # Get payload
-      try:
-        payload = api.payload or {}
-      except BaseException:
-        payload = {}
-
-      # Get prediction
-      try:
-        prediction = predict(payload)
-      except BaseException as e:
-        print('Error making prediction: {}'.format(e))
-        return '', 500
-
-      return prediction, 200
-
-
 def perform(team=None, team_uid=None, prediction=None, prediction_uid=None, s3_bucket_name=None):
   # We need to use importlib.import_module to access our src/ files since src/ will
   # be renamed to <prediction_uid>/ to avoid conflicts with user's project files
@@ -115,16 +95,42 @@ def perform(team=None, team_uid=None, prediction=None, prediction_uid=None, s3_b
                       bucket=s3_bucket_name,
                       save_to=save_path)
 
-  # Create API
-  flask_app = Flask(__name__)
-  api = Api(app=flask_app, version='0.0.1', title='{} API'.format(prediction))
-  namespace = api.namespace('api')
-
-  # Define endpoints for api
-  define_endpoints(api, namespace, predict=predict_method)
-
-  return flask_app
+  return predict_method
 
 
 params = get_envs()
-app = perform(**params)
+
+predict = perform(**params)
+
+app = Flask(__name__)
+
+api = Api(app=app, version='0.0.1', title='API')
+
+namespace = api.namespace('api')
+
+
+@namespace.route('/predict')
+class Predict(Resource):
+  def post(self):
+    # Get payload
+    try:
+      payload = api.payload or {}
+    except BaseException:
+      payload = {}
+
+    # Get prediction
+    try:
+      prediction = predict(payload)
+    except BaseException as e:
+      print('Error making prediction: {}'.format(e))
+      return '', 500
+
+    return prediction, 200
+
+
+api.init_app(app)
+
+
+if __name__ == '__main__':
+  port = int(os.environ.get('PORT', 80))
+  app.run(host='0.0.0.0', port=port, debug=True)
