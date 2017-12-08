@@ -75,20 +75,20 @@ def perform(prediction=None, prediction_uid=None, s3_bucket_name=None):
   # Get ref to the exported predict method
   predict_method = get_predict_method(config)
 
-  # Fetch the latest model from S3
-  model_path = config.get('model')
-
-  if '.' in model_path:
-    model_file_type = model_path.split('.').pop()
-    cloud_path = prediction + '.' + model_file_type
-  else:
-    cloud_path = prediction
-
-  save_path = os.path.abspath(os.path.join(os.path.dirname(__file__), model_path))
-
-  model_fetcher.fetch(cloud_path=cloud_path,
-                      bucket=s3_bucket_name,
-                      save_to=save_path)
+  # # Fetch the latest model from S3
+  # model_path = config.get('model')
+  #
+  # if '.' in model_path:
+  #   model_file_type = model_path.split('.').pop()
+  #   cloud_path = prediction + '.' + model_file_type
+  # else:
+  #   cloud_path = prediction
+  #
+  # save_path = os.path.abspath(os.path.join(os.path.dirname(__file__), model_path))
+  #
+  # model_fetcher.fetch(cloud_path=cloud_path,
+  #                     bucket=s3_bucket_name,
+  #                     save_to=save_path)
 
   return predict_method
 
