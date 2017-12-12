@@ -1,7 +1,7 @@
 import os
 import importlib
 import yaml
-from flask import Flask
+from flask import Flask, request
 from flask_restplus import Api, Resource
 
 
@@ -15,7 +15,9 @@ def get_envs():
     'DATASET_DB_URL': False,
     'DATASET_TABLE_NAME': False,
     'PREDICTION': True,
-    'PREDICTION_UID': True
+    'PREDICTION_UID': True,
+    'CLIENT_ID': False,
+    'CLIENT_SECRET': False
   }
 
   missing = [k for k in required_envs if k not in os.environ]
@@ -93,6 +95,11 @@ def perform(prediction=None, prediction_uid=None, s3_bucket_name=None):
   return predict_method
 
 
+def client_valid(body, headers):
+  return body.get('client_id') == os.environ.get('CLIENT_ID') and \
+         headers.get('TensorCI-Api-Secret') == os.environ.get('CLIENT_SECRET')
+
+
 params = get_envs()
 
 predict = perform(**params)
@@ -113,12 +120,16 @@ class Predict(Resource):
     except BaseException:
       payload = {}
 
+    # Ensure valid client id and secret
+    if not client_valid(payload, request.headers):
+      return {'ok': False, 'error': 'unauthorized'}, 401
+
     # Get prediction
     try:
       prediction = predict(payload)
     except BaseException as e:
       print('Error making prediction: {}'.format(e))
-      return '', 500
+      return {'ok': False, 'error': 'prediction_error'}, 500
 
     return prediction, 200
 
