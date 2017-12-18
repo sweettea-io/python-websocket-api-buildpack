@@ -15,7 +15,7 @@ def get_envs():
     'DATASET_DB_URL': False,
     'DATASET_TABLE_NAME': False,
     'PREDICTION': True,
-    'PREDICTION_UID': True,
+    'PREDICTION_UID': False,
     'CLIENT_ID': False,
     'CLIENT_SECRET': False
   }
@@ -61,14 +61,14 @@ def get_predict_method(config):
   return getattr(predict_mod, predict_func_str)
 
 
-def get_src_mod(src, name):
-  return importlib.import_module('{}.{}'.format(src, name))
+def get_src_mod(name):
+  return importlib.import_module('{}.{}'.format(os.environ.get('PREDICTION_UID'), name))
 
 
-def perform(prediction=None, prediction_uid=None, s3_bucket_name=None):
+def perform(prediction=None, s3_bucket_name=None):
   # Get refs to the modules inside our src directory
-  model_fetcher = get_src_mod(prediction_uid, 'model_fetcher')
-  definitions = get_src_mod(prediction_uid, 'definitions')
+  model_fetcher = get_src_mod('model_fetcher')
+  definitions = get_src_mod('definitions')
 
   # Read the config file in the project
   config_path = getattr(definitions, 'config_path')
@@ -101,14 +101,13 @@ def client_valid(body, headers):
 
 
 params = get_envs()
-
 predict = perform(**params)
 
 app = Flask(__name__)
-
 api = Api(version='0.0.1', title='API')
-
 namespace = api.namespace('api')
+
+dataset_db = get_src_mod('dataset_db')
 
 
 @namespace.route('/predict')
@@ -132,6 +131,48 @@ class Predict(Resource):
       return {'ok': False, 'error': 'prediction_error'}, 500
 
     return prediction, 200
+
+
+@namespace.route('/dataset')
+class Predict(Resource):
+  def put(self):
+    try:
+      # Parse payload
+      payload = api.payload or {}
+    except BaseException:
+      payload = {}
+
+    # Ensure valid client id and secret
+    if not client_valid(payload, request.headers):
+      return {'ok': False, 'error': 'unauthorized'}, 401
+
+    # Ensure new records were even provided
+    records = payload.get('records') or []
+
+    if not records:
+      return {'ok': False, 'error': 'no_records_provided'}, 500
+
+    # Get the JSON data schema for the dataset table
+    table_name = os.environ.get('DATASET_TABLE_NAME')
+    dataset_schema = dataset_db.data_schema(table_name)
+
+    if not dataset_schema:
+      return {'ok': False, 'error': 'empty_dataset'}
+
+    dataset_schema = set(dataset_schema)
+
+    # Validate the schema of the provided records matches that of the dataset
+    for r in records:
+      rset = set(r)
+
+      if rset != dataset_schema:
+        print('Invalid data schema when updating dataset.\nActual: {}\nExpected: {}'.format(rset, dataset_schema))
+        return {'ok': False, 'error': 'invalid_data_schema'}, 500
+
+    # Insert the new records (TODO: Batch this)
+    dataset_db.populate_records(records, table=table_name)
+
+    return {'ok': True, 'message': 'Successfully updated dataset'}, 200
 
 
 api.init_app(app)
