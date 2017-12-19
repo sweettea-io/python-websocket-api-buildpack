@@ -77,7 +77,7 @@ def perform(prediction=None, s3_bucket_name=None):
   # Get ref to the exported predict method
   predict_method = get_predict_method(config)
 
-  # # Fetch the latest model from S3
+  # Fetch the latest model from S3
   model_path = config.get('model')
 
   if '.' in model_path:
@@ -169,7 +169,7 @@ class Predict(Resource):
         print('Invalid data schema when updating dataset.\nActual: {}\nExpected: {}'.format(rset, dataset_schema))
         return {'ok': False, 'error': 'invalid_data_schema'}, 500
 
-    # Insert the new records (TODO: Batch this)
+    # Insert the new records
     dataset_db.populate_records(records, table=table_name)
 
     return {'ok': True, 'message': 'Successfully updated dataset'}, 200

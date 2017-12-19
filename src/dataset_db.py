@@ -11,6 +11,7 @@ except BaseException as e:
   print('Error connecting to Dataset DB url {} -- {}'.format(dataset_db_url, e))
 
 
+# TODO: Batch insert
 def populate_records(records, table=None):
   for r in records:
     engine.execute('INSERT INTO {} (data) VALUES (\'{}\');'.format(table, json.dumps(r)))
