@@ -21,6 +21,6 @@ def data_schema(table):
   result = [r for r in engine.execute('SELECT data from {} LIMIT 1;'.format(table))]
 
   try:
-    return {k: True for k in result[0][0].keys()}
+    return set({k: True for k in result[0][0].keys()})
   except:
-    return {}
+    return None

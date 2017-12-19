@@ -159,8 +159,6 @@ class Predict(Resource):
     if not dataset_schema:
       return {'ok': False, 'error': 'empty_dataset'}
 
-    dataset_schema = set(dataset_schema)
-
     # Validate the schema of the provided records matches that of the dataset
     for r in records:
       rset = set(r)
