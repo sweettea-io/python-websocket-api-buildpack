@@ -5,11 +5,11 @@ from boto3.s3.transfer import TransferConfig, S3Transfer
 
 
 def download_model(model_path):
-  # Construct cloud model path by combining prediction slug
+  # Construct cloud model path by combining repo slug
   # with file extension used in provided model_path.
-  prediction_slug = os.environ.get('PREDICTION')
-  cloud_path = prediction_slug
-  tmp_path = 'tmp/model-{}'.format(prediction_slug)
+  repo_slug = os.environ.get('REPO_SLUG')
+  cloud_path = repo_slug
+  tmp_path = 'tmp/model-{}'.format(repo_slug)
 
   if '.' in model_path:
     ext = model_path.split('.').pop()

@@ -13,8 +13,8 @@ def validate_envs():
     'S3_BUCKET_NAME',
     'DATASET_DB_URL',
     'DATASET_TABLE_NAME',
-    'PREDICTION',
-    'PREDICTION_UID',
+    'REPO_SLUG',
+    'REPO_UID',
     'CLIENT_ID',
     'CLIENT_SECRET',
     'INTERNAL_MSG_TOKEN'
@@ -59,7 +59,7 @@ def get_exported_method(config, key=None):
 
 
 def get_src_mod(name):
-  return importlib.import_module('{}.{}'.format(os.environ.get('PREDICTION_UID'), name))
+  return importlib.import_module('{}.{}'.format(os.environ.get('REPO_UID'), name))
 
 
 def validate_client(body, headers):
