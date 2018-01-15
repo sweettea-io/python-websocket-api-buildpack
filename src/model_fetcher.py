@@ -43,5 +43,14 @@ def fetch(cloud_path=None, bucket=None, save_to=None):
 def makedirs(filepath):
   comps = filepath.split('/')
   comps.pop()
-  dir = '/'.join(comps)
-  os.makedirs(dir)
+
+  if filepath.startswith('/'):
+    path = '/'
+  else:
+    path = ''
+
+  for dir in comps:
+    path += (dir + '/')
+
+    if not os.path.exists(path):
+      os.mkdir(path)
