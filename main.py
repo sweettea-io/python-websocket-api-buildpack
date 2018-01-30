@@ -12,7 +12,6 @@ def validate_envs():
     'AWS_REGION_NAME',
     'S3_BUCKET_NAME',
     'DATASET_DB_URL',
-    'DATASET_TABLE_NAME',
     'REPO_SLUG',
     'REPO_UID',
     'CLIENT_ID',
@@ -71,9 +70,12 @@ def validate_core(headers):
   return headers.get('TensorCI-Internal-Msg-Token') != os.environ.get('INTERNAL_MSG_TOKEN')
 
 
-def define_routes(api, namespace, 
-               predict_method=None, reload_model_method=None, 
-               model_fetcher=None, model_path=None):
+def define_routes(api, namespace,
+                  predict_method=None,
+                  reload_model_method=None,
+                  model_fetcher=None,
+                  model_path=None,
+                  dataset_db=None):
 
   # Get predictions
   @namespace.route('/predict')
@@ -96,7 +98,6 @@ def define_routes(api, namespace,
 
       return {'ok': True, 'prediction': result}, 200
 
-  
   # Update the dataset
   @namespace.route('/dataset')
   class Dataset(Resource):
@@ -110,6 +111,11 @@ def define_routes(api, namespace,
       if not validate_client(payload, request.headers):
         return {'ok': False, 'error': 'unauthorized'}, 401
 
+      table_name = os.environ.get('DATASET_TABLE_NAME')
+
+      if not table_name:
+        return {'ok': False, 'error': 'no_dataset_table_exists'}, 500
+
       # Ensure new records were provided
       records = payload.get('records') or []
 
@@ -117,7 +123,6 @@ def define_routes(api, namespace,
         return {'ok': False, 'error': 'no_records_provided'}, 500
 
       # Get the JSON data schema for the dataset table
-      table_name = os.environ.get('DATASET_TABLE_NAME')
       dataset_schema = dataset_db.data_schema(table_name)
 
       if not dataset_schema:
@@ -195,7 +200,8 @@ define_routes(api, namespace,
               predict_method=predict,
               reload_model_method=reload_model,
               model_fetcher=model_fetcher,
-              model_path=model_path)
+              model_path=model_path,
+              dataset_db=dataset_db)
 
 # Attach Flask app to the API
 api.init_app(app)
