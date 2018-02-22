@@ -151,7 +151,7 @@ def define_routes(api, namespace,
           return {'ok': False, 'error': 'forbidden'}, 403
   
         try:
-          # Update model file with latest from S3
+          # Update model with the latest from S3
           model_fetcher.download_model(model_path)
         except BaseException as e:
           print('Error fetching latest model with error, {}.'.format(e))
@@ -187,7 +187,7 @@ if 'reload_model' in config:
 
 model_path = config.get('model')
 
-# Fetch the latest model file from S3
+# Fetch the latest model from S3
 model_fetcher.download_model(model_path)
 
 # Create Flask app and API
@@ -206,10 +206,7 @@ define_routes(api, namespace,
 # Attach Flask app to the API
 api.init_app(app)
 
-# app will be imported by uwsgi on prod
-
-
-# Run built-in Flask server on dev
+# Run built-in Flask server if dev env
 if __name__ == '__main__':
   port = int(os.environ.get('PORT', 80))
   app.run(host='0.0.0.0', port=port, debug=True)
