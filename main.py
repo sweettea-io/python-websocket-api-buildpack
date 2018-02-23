@@ -187,9 +187,6 @@ if 'reload_model' in config:
 
 model_path = config.get('model')
 
-# Fetch the latest model from S3
-model_fetcher.download_model(model_path)
-
 # Create Flask app and API
 app = Flask(__name__)
 api = Api(version='0.0.1', title='API')
@@ -205,6 +202,9 @@ define_routes(api, namespace,
 
 # Attach Flask app to the API
 api.init_app(app)
+
+# Fetch the latest model from S3
+model_fetcher.download_model(model_path)
 
 # Run built-in Flask server if dev env
 if __name__ == '__main__':
