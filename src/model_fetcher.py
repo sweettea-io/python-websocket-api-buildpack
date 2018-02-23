@@ -21,7 +21,7 @@ def download_model(path):
 
   repo_slug = os.environ.get('REPO_SLUG')
   cloud_path = '.'.join((repo_slug, ext))  # S3 file key
-  tmp_path = 'tmp/model-{}'.format(cloud_path)
+  tmp_path = 'tci_tmp/model-{}'.format(cloud_path)
 
   # Construct absolute paths from relative ones
   abs_tmp_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', tmp_path))
