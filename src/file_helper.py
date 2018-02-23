@@ -58,6 +58,7 @@ def extract_in_place(archive_path):
   archive.close()
 
   # Remove the archive file
-  os.remove(archive_path)
+  if os.path.exists(archive_path):
+    os.remove(archive_path)
 
   return extract_dir
