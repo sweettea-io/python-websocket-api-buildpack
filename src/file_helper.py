@@ -25,7 +25,10 @@ def upsert_parent_dirs(filepath):
     path += (dir + '/')
 
     if not os.path.exists(path):
-      os.mkdir(path)
+      try:
+        os.mkdir(path)
+      except:
+        pass
 
 
 def extract_in_place(archive_path):
