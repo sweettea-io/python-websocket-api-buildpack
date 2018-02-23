@@ -40,11 +40,12 @@ def extract_in_place(archive_path):
   :return: Path to directory where zipfile contents were extracted
   :rtype: str
   """
-  # Create path to directory to extract archive to
-  filename_w_ext = archive_path.split('/').pop()
-  extract_dir = archive_path[:-(len(filename_w_ext))]
+  # Comments using values from example of archive_path='/path/to/model.zip
+  filename_w_ext = archive_path.split('/').pop()        # model.zip
+  ext = filename_w_ext.split('.').pop()                 # zip
+  extract_dir = archive_path[:-(len(ext) + 1)]          # /path/to/model
 
-  # Remove the destination dir if it exists
+  # Remove the destination dir if it already exists
   if os.path.exists(extract_dir) and os.path.isdir(extract_dir):
     shutil.rmtree(extract_dir)
 
