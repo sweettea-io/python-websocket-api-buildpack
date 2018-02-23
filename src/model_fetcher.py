@@ -2,7 +2,31 @@ import os
 import boto3
 import file_helper
 import shutil
+import threading
 from boto3.s3.transfer import TransferConfig, S3Transfer
+
+
+class ProgressPercentage(object):
+  def __init__(self, path, move_to, extract=False):
+    self.path = path
+    self.move_to = move_to
+    self.size = float(os.path.getsize(self.path))
+    self.seen_so_far = 0
+    self.lock = threading.Lock()
+    self.extract = extract
+
+  def __call__(self, bytes_amount):
+    with self.lock:
+      self.seen_so_far += bytes_amount
+      percentage = self.seen_so_far / self.size
+
+      if percentage == 1:
+        # Replace the active model file with the new one
+        shutil.move(self.path, self.move_to)
+
+        # Extract model archive if a it's a dir
+        if self.extract:
+          file_helper.extract_in_place(self.move_to)
 
 
 def download_model(path):
@@ -32,20 +56,13 @@ def download_model(path):
   file_helper.upsert_parent_dirs(abs_model_path)
 
   # Download model file from S3 to abs_tmp_path
-  fetch(cloud_path=cloud_path,
-        bucket=os.environ.get('S3_BUCKET_NAME'),
-        save_to=abs_tmp_path)
+  bucket = os.environ.get('S3_BUCKET_NAME')
 
-  # Replace the active model file with the new one
-  shutil.move(abs_tmp_path, abs_model_path)
-
-  # Extract model archive if a it's a dir
-  if ext == archive:
-    file_helper.extract_in_place(abs_model_path)
-
-
-def fetch(cloud_path=None, bucket=None, save_to=None):
-  client = boto3.client('s3', os.environ.get('AWS_REGION_NAME'))
-  config = TransferConfig(use_threads=False)
+  client = boto3.client('s3', bucket)
+  config = TransferConfig()
   transfer = S3Transfer(client, config)
-  transfer.download_file(bucket, cloud_path, save_to)
+  is_archive = ext == archive
+
+  cb = ProgressPercentage(abs_tmp_path, abs_model_path, extract=is_archive)
+
+  transfer.download_file(bucket, cloud_path, abs_tmp_path, callback=cb)
