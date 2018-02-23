@@ -59,7 +59,7 @@ def download_model(path):
   bucket = os.environ.get('S3_BUCKET_NAME')
 
   client = boto3.client('s3')
-  config = TransferConfig()
+  config = TransferConfig(use_threads=False)
   transfer = S3Transfer(client, config)
   is_archive = ext == archive
 
