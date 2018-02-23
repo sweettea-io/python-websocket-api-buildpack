@@ -1,32 +1,6 @@
 import os
 import boto3
 import file_helper
-import shutil
-import threading
-from boto3.s3.transfer import TransferConfig, S3Transfer
-
-
-class ProgressPercentage(object):
-  def __init__(self, path, move_to, extract=False):
-    self.path = path
-    self.move_to = move_to
-    self.size = float(os.path.getsize(self.path))
-    self.seen_so_far = 0
-    self.lock = threading.Lock()
-    self.extract = extract
-
-  def __call__(self, bytes_amount):
-    with self.lock:
-      self.seen_so_far += bytes_amount
-      percentage = self.seen_so_far / self.size
-
-      if percentage == 1:
-        # Replace the active model file with the new one
-        shutil.move(self.path, self.move_to)
-
-        # Extract model archive if a it's a dir
-        if self.extract:
-          file_helper.extract_in_place(self.move_to)
 
 
 def download_model(path):
@@ -58,11 +32,9 @@ def download_model(path):
   # Download model file from S3 to abs_tmp_path
   bucket = os.environ.get('S3_BUCKET_NAME')
 
-  client = boto3.client('s3', bucket)
-  config = TransferConfig()
-  transfer = S3Transfer(client, config)
-  is_archive = ext == archive
+  client = boto3.client('s3')
 
-  cb = ProgressPercentage(abs_tmp_path, abs_model_path, extract=is_archive)
+  client.download_file(bucket, cloud_path, abs_model_path)
 
-  transfer.download_file(bucket, cloud_path, abs_tmp_path, callback=cb)
+  if ext == archive:
+    file_helper.extract_in_place(abs_model_path)
