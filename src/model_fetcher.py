@@ -19,22 +19,20 @@ def download_model(path):
 
   repo_slug = os.environ.get('REPO_SLUG')
   cloud_path = '.'.join((repo_slug, ext))  # S3 file key
-  tmp_path = 'tci_tmp/model-{}'.format(cloud_path)
 
-  # Construct absolute paths from relative ones
-  abs_tmp_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', tmp_path))
+  # Construct absolute save path.
   abs_model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', save_to))
 
-  # Ensure all directories exist in each of our absolute paths
-  file_helper.upsert_parent_dirs(abs_tmp_path)
+  # Ensure all directories exist leading up to model.
   file_helper.upsert_parent_dirs(abs_model_path)
 
-  # Download model file from S3 to abs_tmp_path
+  # Get bucket name and S3 client.
   bucket = os.environ.get('S3_BUCKET_NAME')
-
   client = boto3.client('s3')
 
+  # Download model.
   client.download_file(bucket, cloud_path, abs_model_path)
 
+  # If model is a zip file, extract it.
   if ext == archive:
     file_helper.extract_in_place(abs_model_path)
