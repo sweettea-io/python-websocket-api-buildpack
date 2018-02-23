@@ -58,12 +58,12 @@ def download_model(path):
   # Download model file from S3 to abs_tmp_path
   bucket = os.environ.get('S3_BUCKET_NAME')
 
-  client = boto3.client('s3', bucket)
+  client = boto3.client('s3')
   config = TransferConfig()
   transfer = S3Transfer(client, config)
   is_archive = ext == archive
 
-  size = client.head_object(Bucket=bucket, Key=cloud_path).ContentLength
+  size = client.head_object(Bucket=bucket, Key=cloud_path).get('ContentLength')
 
   progress = ProgressPercentage(size, abs_tmp_path, abs_model_path, extract=is_archive)
 
