@@ -1,31 +1,9 @@
 import os
 import importlib
 import redis
-from time import sleep
 import yaml
 from restful_redis.server import RestfulRedisServer
-
-
-def validate_envs():
-  required_envs = [
-    'AWS_ACCESS_KEY_ID',
-    'AWS_SECRET_ACCESS_KEY',
-    'AWS_REGION_NAME',
-    'S3_BUCKET_NAME',
-    'DATASET_DB_URL',
-    'REPO_SLUG',
-    'REPO_UID',
-    'DOMAIN',
-    'CLIENT_ID',
-    'CLIENT_SECRET',
-    'INTERNAL_MSG_TOKEN'
-  ]
-
-  missing = [k for k in required_envs if k not in os.environ]
-
-  if missing:
-    print('Not starting API. The following env vars not provided: {}'.format(', '.join(missing)))
-    exit(1)
+from time import sleep
 
 
 def read_config(config_path):
@@ -63,19 +41,16 @@ def get_src_mod(name):
   return importlib.import_module('{}.{}'.format(os.environ.get('REPO_UID'), name))
 
 
-def create_socket_url():
-  username = os.environ['CLIENT_ID']
-  pw = os.environ['CLIENT_SECRET']
-  host = os.environ['DOMAIN']
-
-  # return 'redis://{}:{}@{}:6379'.format(username, pw, host)
-  return 'redis://{}:6379'.format(host)
+def create_socket_url(envs):
+  # return 'redis://{}:{}@{}:6379'.format(envs.CLIENT_ID, envs.CLIENT_SECRET, envs.DOMAIN)
+  return 'redis://{}:6379'.format(envs.DOMAIN)
 
 
 def ensure_connected(server):
   connected = attempt_connection(server)
 
   if not connected:
+    sleep(3)
     return ensure_connected()
 
   return True
@@ -91,10 +66,8 @@ def attempt_connection(server):
 
 
 def perform():
-  # Ensure all required environment variables exist
-  validate_envs()
-
   # Get exported internal src modules
+  envs = get_src_mod('envs').envs
   definitions = get_src_mod('definitions')
   model_fetcher = get_src_mod('model_fetcher')
 
@@ -108,7 +81,7 @@ def perform():
   model_fetcher.download_model(config.get('model'))
 
   # Create socket server
-  socket_url = create_socket_url()
+  socket_url = create_socket_url(envs)
   server = RestfulRedisServer(url=socket_url)
 
   # Wait for socket to connect
