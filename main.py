@@ -1,8 +1,7 @@
 import os
 import importlib
 import yaml
-from flask import Flask, request
-from flask_restplus import Api, Resource
+from restful_redis.server import RestfulRedisServer
 
 
 def validate_envs():
@@ -14,6 +13,7 @@ def validate_envs():
     'DATASET_DB_URL',
     'REPO_SLUG',
     'REPO_UID',
+    'DOMAIN',
     'CLIENT_ID',
     'CLIENT_SECRET',
     'INTERNAL_MSG_TOKEN'
@@ -61,152 +61,42 @@ def get_src_mod(name):
   return importlib.import_module('{}.{}'.format(os.environ.get('REPO_UID'), name))
 
 
-def validate_client(body, headers):
-  return body.get('client_id') == os.environ.get('CLIENT_ID') and \
-         headers.get('TensorCI-Api-Secret') == os.environ.get('CLIENT_SECRET')
+def create_socket_url():
+  username = os.environ['CLIENT_ID']
+  pw = os.environ['CLIENT_SECRET']
+  host = os.environ['DOMAIN']
+
+  # return 'redis://{}:{}@{}:6379'.format(username, pw, host)
+  return 'redis://{}:6379'.format(host)
 
 
-def validate_core(headers):
-  return headers.get('TensorCI-Internal-Msg-Token') != os.environ.get('INTERNAL_MSG_TOKEN')
+def perform():
+  # Ensure all required environment variables exist
+  validate_envs()
+
+  # Get exported internal src modules
+  definitions = get_src_mod('definitions')
+  model_fetcher = get_src_mod('model_fetcher')
+
+  # Read the project's config file
+  config = read_config(definitions.config_path)
+
+  # Get exported config methods
+  predict = get_exported_method(config, key='predict')
+
+  # Download trained model from S3
+  model_fetcher.download_model(config.get('model'))
+
+  # Create socket server
+  socket_url = create_socket_url()
+  server = RestfulRedisServer(url=socket_url)
+
+  # Register socket handlers
+  server.register_handler('predict', predict)
+
+  # Start socket server (run forever)
+  server.run()
 
 
-def define_routes(api, namespace,
-                  predict_method=None,
-                  reload_model_method=None,
-                  model_fetcher=None,
-                  model_path=None,
-                  dataset_db=None):
-
-  # Get predictions
-  @namespace.route('/predict')
-  class Prediction(Resource):
-
-    def post(self):
-      try:
-        payload = api.payload or {}
-      except BaseException:
-        payload = {}
-
-      if not validate_client(payload, request.headers):
-        return {'ok': False, 'error': 'unauthorized'}, 401
-
-      try:
-        result = predict_method(payload)
-      except BaseException as e:
-        print('Error making prediction: {}'.format(e))
-        return {'ok': False, 'error': 'prediction_error'}, 500
-
-      return {'ok': True, 'prediction': result}, 200
-
-  # Update the dataset
-  @namespace.route('/dataset')
-  class Dataset(Resource):
-
-    def put(self):
-      try:
-        payload = api.payload or {}
-      except BaseException:
-        payload = {}
-
-      if not validate_client(payload, request.headers):
-        return {'ok': False, 'error': 'unauthorized'}, 401
-
-      table_name = os.environ.get('DATASET_TABLE_NAME')
-
-      if not table_name:
-        return {'ok': False, 'error': 'no_dataset_table_exists'}, 500
-
-      # Ensure new records were provided
-      records = payload.get('records') or []
-
-      if not records:
-        return {'ok': False, 'error': 'no_records_provided'}, 500
-
-      # Get the JSON data schema for the dataset table
-      dataset_schema = dataset_db.data_schema(table_name)
-
-      if not dataset_schema:
-        return {'ok': False, 'error': 'empty_dataset'}
-
-      # Validate the schema of the provided records matches that of the dataset
-      for r in records:
-        rset = set(r)
-
-        if rset != dataset_schema:
-          print('Invalid data schema when updating dataset.\nActual: {}\nExpected: {}'.format(rset, dataset_schema))
-          return {'ok': False, 'error': 'invalid_data_schema'}, 500
-
-      # Insert the new records
-      dataset_db.populate_records(records, table=table_name)
-
-      return {'ok': True, 'message': 'Successfully updated dataset'}, 200
-
-  if reload_model_method:
-    # Notification to fetch the latest model
-    @namespace.route('/model')
-    class Model(Resource):
-  
-      def put(self):
-        if not validate_core(request.headers):
-          return {'ok': False, 'error': 'forbidden'}, 403
-  
-        try:
-          # Update model with the latest from S3
-          model_fetcher.download_model(model_path)
-        except BaseException as e:
-          print('Error fetching latest model with error, {}.'.format(e))
-          return {'ok': False, 'error': 'unknown_error'}
-  
-        # Reload model into project
-        try:
-          reload_model_method()
-        except BaseException as e:
-          print('Error reloading model with error, {}.'.format(e))
-          return {'ok': False, 'error': 'reload_model_error'}
-  
-        return {'ok': True}, 200
-
-
-# Validate required env vars
-validate_envs()
-
-# Get exported src modules
-dataset_db = get_src_mod('dataset_db')
-definitions = get_src_mod('definitions')
-model_fetcher = get_src_mod('model_fetcher')
-
-# Read the project's config file
-config = read_config(definitions.config_path)
-
-# Get exported config file info ('predict', 'reload_model', 'model')
-predict = get_exported_method(config, key='predict')
-reload_model = None
-
-if 'reload_model' in config:
-  reload_model = get_exported_method(config, key='reload_model')
-
-model_path = config.get('model')
-
-# Create Flask app and API
-app = Flask(__name__)
-api = Api(version='0.0.1', title='API')
-namespace = api.namespace('api')
-
-# Define the API's routes
-define_routes(api, namespace,
-              predict_method=predict,
-              reload_model_method=reload_model,
-              model_fetcher=model_fetcher,
-              model_path=model_path,
-              dataset_db=dataset_db)
-
-# Attach Flask app to the API
-api.init_app(app)
-
-# Fetch the latest model from S3
-model_fetcher.download_model(model_path)
-
-# Run built-in Flask server if dev env
 if __name__ == '__main__':
-  port = int(os.environ.get('PORT', 80))
-  app.run(host='0.0.0.0', port=port, debug=True)
+  perform()
