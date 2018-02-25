@@ -73,12 +73,21 @@ def create_socket_url():
 
 
 def ensure_connected(server):
+  connected = attempt_connection(server)
+
+  if not connected:
+    return ensure_connected()
+
+  return True
+
+
+def attempt_connection(server):
   try:
-    server.redis.keys()
+    server.redis.blpop('connection_test', 1)
   except redis.exceptions.ConnectionError:
-    print('Error connecting to Redis server. Waiting 30 seconds and trying again.')
-    sleep(30)
-    ensure_connected(server)
+    return False
+
+  return True
 
 
 def perform():
