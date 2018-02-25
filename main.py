@@ -1,5 +1,7 @@
 import os
 import importlib
+import redis
+from time import sleep
 import yaml
 from restful_redis.server import RestfulRedisServer
 
@@ -70,6 +72,15 @@ def create_socket_url():
   return 'redis://{}:6379'.format(host)
 
 
+def ensure_connected(server):
+  try:
+    server.redis.keys()
+  except redis.exceptions.ConnectionError:
+    print('Error connecting to Redis server. Waiting 30 seconds and trying again.')
+    sleep(30)
+    ensure_connected(server)
+
+
 def perform():
   # Ensure all required environment variables exist
   validate_envs()
@@ -90,6 +101,9 @@ def perform():
   # Create socket server
   socket_url = create_socket_url()
   server = RestfulRedisServer(url=socket_url)
+
+  # Wait for socket to connect
+  ensure_connected(server)
 
   # Register socket handlers
   server.register_handler('predict', predict)
