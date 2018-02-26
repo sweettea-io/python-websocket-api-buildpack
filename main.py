@@ -42,7 +42,8 @@ def get_src_mod(name):
 
 
 def create_socket_url(envs):
-  return 'redis://{}:{}@{}:6379'.format(envs.CLIENT_ID, envs.CLIENT_SECRET, envs.DOMAIN)
+  # return 'redis://{}:{}@{}:6379'.format(envs.CLIENT_ID, envs.CLIENT_SECRET, envs.DOMAIN)
+  return 'redis://{}:6379'.format(envs.DOMAIN)
 
 
 def ensure_connected(server):
