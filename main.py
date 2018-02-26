@@ -51,7 +51,7 @@ def ensure_connected(server):
 
   if not connected:
     sleep(3)
-    return ensure_connected()
+    return ensure_connected(server)
 
   return True
 
