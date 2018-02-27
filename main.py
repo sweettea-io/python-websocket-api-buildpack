@@ -81,7 +81,7 @@ def perform():
   model_fetcher.download_model(config.get('model'))
 
   # Create socket server
-  socket_url = 'redis://h:pd930b9367c0de3feb58451837e8a8db81a02a1df1fbaeba7d69faa28f2133791@ec2-54-174-198-121.compute-1.amazonaws.com:35959'
+  socket_url = 'redis://t:76e73e2301bd2d34d90906ca78c7b7dddbee7a373c6ee69fdda1985b8b2efead@latticeai-lattice_data_imputation@tensorci.com:6379'
   # socket_url = create_socket_url(envs)
   server = RestfulRedisServer(url=socket_url)
 
