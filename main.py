@@ -41,9 +41,9 @@ def get_src_mod(name):
   return importlib.import_module('{}.{}'.format(os.environ.get('REPO_UID'), name))
 
 
-def create_socket_url(envs):
-  # return 'redis://{}:{}@{}:6379'.format(envs.CLIENT_ID, envs.CLIENT_SECRET, envs.DOMAIN)
-  return 'redis://{}:6379'.format(envs.DOMAIN)
+# def create_socket_url(envs):
+#   return 'redis://{}:{}@{}:6379'.format(envs.CLIENT_ID, envs.CLIENT_SECRET, envs.DOMAIN)
+  # return 'redis://{}:6379'.format(envs.DOMAIN)
 
 
 def ensure_connected(server):
@@ -81,7 +81,8 @@ def perform():
   model_fetcher.download_model(config.get('model'))
 
   # Create socket server
-  socket_url = create_socket_url(envs)
+  socket_url = 'redis://h:pd930b9367c0de3feb58451837e8a8db81a02a1df1fbaeba7d69faa28f2133791@ec2-54-174-198-121.compute-1.amazonaws.com:35959'
+  # socket_url = create_socket_url(envs)
   server = RestfulRedisServer(url=socket_url)
 
   # Wait for socket to connect
