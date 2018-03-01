@@ -10,7 +10,6 @@ class Envs(object):
     'DATASET_DB_URL',
     'REPO_SLUG',
     'REPO_UID',
-    'DOMAIN',
     'CLIENT_ID',
     'CLIENT_SECRET',
     'INTERNAL_MSG_TOKEN'
