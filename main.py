@@ -1,9 +1,9 @@
-import os
+import asyncio
 import importlib
-import redis
+import json
+import os
+import websockets
 import yaml
-from restful_redis.server import RestfulRedisServer
-from time import sleep
 
 
 def read_config(config_path):
@@ -38,61 +38,79 @@ def get_exported_method(config, key=None):
 
 
 def get_src_mod(name):
-  return importlib.import_module('{}.{}'.format(os.environ.get('REPO_UID'), name))
+  return importlib.import_module('.'.join((os.environ.get('REPO_UID'), name)))
 
 
-# def create_socket_url(envs):
-#   return 'redis://{}:{}@{}:6379'.format(envs.CLIENT_ID, envs.CLIENT_SECRET, envs.DOMAIN)
-  # return 'redis://{}:6379'.format(envs.DOMAIN)
-
-
-def ensure_connected(server):
-  connected = attempt_connection(server)
-
-  if not connected:
-    sleep(3)
-    return ensure_connected(server)
-
-  return True
-
-
-def attempt_connection(server):
-  try:
-    server.redis.blpop('connection_test', 1)
-  except redis.exceptions.ConnectionError:
-    return False
-
-  return True
+def auth_client(headers, defs, envs):
+  return headers.get(defs.client_id_header) == envs.CLIENT_ID and \
+         headers.get(defs.client_secret_header) == envs.CLIENT_SECRET
 
 
 def perform():
-  # Get exported internal src modules
+  # Get internal src modules
   envs = get_src_mod('envs').envs
   definitions = get_src_mod('definitions')
+  responses = get_src_mod('responses')
   model_fetcher = get_src_mod('model_fetcher')
 
-  # Read the project's config file
+  # Read the project's config file.
   config = read_config(definitions.config_path)
 
-  # Get exported config methods
+  # Get exported config methods.
   predict = get_exported_method(config, key='predict')
 
-  # Download trained model from S3
+  # Download the trained model from S3.
   model_fetcher.download_model(config.get('model'))
 
-  # Create socket server
-  socket_url = 'redis://t:76e73e2301bd2d34d90906ca78c7b7dddbee7a373c6ee69fdda1985b8b2efead@latticeai-lattice_data_imputation.tensorci.com:6379'
-  # socket_url = create_socket_url(envs)
-  server = RestfulRedisServer(url=socket_url)
+  # Register socket message handlers.
+  handlers = {
+    'predict': predict
+  }
 
-  # Wait for socket to connect
-  ensure_connected(server)
+  async def server(websocket, path):
+    headers = dict(websocket.request_headers.items()) or {}
+    authed = auth_client(headers, definitions, envs)
 
-  # Register socket handlers
-  server.register_handler('predict', predict)
+    if not authed:
+      await websocket.send(json.dumps(responses.UNAUTHORIZED))
+      return
+
+    async for message in websocket:
+      try:
+        payload = json.loads(message) or {}
+      except:
+        await websocket.send(json.dumps(responses.INVALID_JSON_PAYLOAD))
+        return
+
+      handler_name = payload.get('handler')
+      req_data = payload.get('data')
+
+      if not handler_name:
+        await websocket.send(json.dumps(responses.UNSUPPORTED_HANDLER))
+        return
+
+      handler = handlers.get(handler_name)
+
+      if not handler:
+        await websocket.send(json.dumps(responses.UNSUPPORTED_HANDLER))
+        return
+
+      try:
+        # Call the handler method passing in the request data
+        resp_data = handler(req_data)
+
+        resp_payload = {
+          'ok': True,
+          'data': resp_data
+        }
+      except BaseException:
+        resp_payload = responses.EXPORTED_FUNC_CALL_FAILED
+
+      await websocket.send(json.dumps(resp_payload))
 
   # Start socket server (run forever)
-  server.run()
+  asyncio.get_event_loop().run_until_complete(websockets.serve(server, definitions.host, definitions.port))
+  asyncio.get_event_loop().run_forever()
 
 
 if __name__ == '__main__':

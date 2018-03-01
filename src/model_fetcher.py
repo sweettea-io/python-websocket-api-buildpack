@@ -1,6 +1,6 @@
 import os
 import boto3
-import file_helper
+from . import file_helper
 from boto3.s3.transfer import TransferConfig, S3Transfer
 
 
