@@ -71,8 +71,6 @@ def perform():
     headers = dict(websocket.request_headers.items()) or {}
     authed = auth_client(headers, definitions, envs)
 
-    print(headers)
-
     if not authed:
       await websocket.send(json.dumps(responses.UNAUTHORIZED))
       return
