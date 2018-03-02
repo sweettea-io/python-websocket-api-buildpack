@@ -68,12 +68,14 @@ def perform():
   }
 
   async def server(websocket, path):
-    # headers = dict(websocket.request_headers.items()) or {}
-    # authed = auth_client(headers, definitions, envs)
+    headers = dict(websocket.request_headers.items()) or {}
+    authed = auth_client(headers, definitions, envs)
 
-    # if not authed:
-    #   await websocket.send(json.dumps(responses.UNAUTHORIZED))
-    #   return
+    print(headers)
+
+    if not authed:
+      await websocket.send(json.dumps(responses.UNAUTHORIZED))
+      return
 
     async for message in websocket:
       try:
@@ -109,9 +111,7 @@ def perform():
       await websocket.send(json.dumps(resp_payload))
 
   # Start socket server (run forever)
-  asyncio.get_event_loop().run_until_complete(
-    websockets.serve(server, host=definitions.host, port=definitions.port))
-
+  asyncio.get_event_loop().run_until_complete(websockets.serve(server, definitions.host, definitions.port))
   asyncio.get_event_loop().run_forever()
 
 
