@@ -1,6 +1,6 @@
 FROM python:3.6
 
-RUN pip install boto3==1.4.7 pyyaml==3.12 SQLAlchemy==1.1.15 psycopg2==2.7.3 websockets==4.0.1
+RUN pip install boto3==1.4.7 pyyaml==3.12 SQLAlchemy==1.1.15 psycopg2==2.7.3 websockets==4.0.1 redis==2.10.6
 
 # Copy the current directory contents into the container at /app
 COPY . /app

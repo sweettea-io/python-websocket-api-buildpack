@@ -12,7 +12,8 @@ class Envs(object):
     'REPO_UID',
     'CLIENT_ID',
     'CLIENT_SECRET',
-    'INTERNAL_MSG_TOKEN'
+    'INTERNAL_MSG_TOKEN',
+    'REDIS_URL'
   )
 
   def __init__(self):
