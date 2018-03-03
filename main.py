@@ -52,7 +52,7 @@ def perform():
   definitions = get_src_mod('definitions')
   responses = get_src_mod('responses')
   model_fetcher = get_src_mod('model_fetcher')
-  pyredis = get_src_mod('pyredis')
+  # pyredis = get_src_mod('pyredis')
 
   # Read the project's config file.
   config = read_config(definitions.config_path)
@@ -110,7 +110,7 @@ def perform():
       await websocket.send(json.dumps(resp_payload))
 
       # Log request to redis
-      pyredis.log_request(envs.REPO_UID)
+      # pyredis.log_request(envs.REPO_UID)
 
   # Start socket server (run forever)
   asyncio.get_event_loop().run_until_complete(websockets.serve(server, definitions.host, definitions.port))
