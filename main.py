@@ -57,11 +57,11 @@ def perform():
   # Read the project's config file.
   config = read_config(definitions.config_path)
 
-  # Get exported config methods.
-  predict = get_exported_method(config, key='predict')
-
   # Download the trained model from S3.
   model_fetcher.download_model(config.get('model'))
+
+  # Get exported config methods.
+  predict = get_exported_method(config, key='predict')
 
   # Register socket message handlers.
   handlers = {
