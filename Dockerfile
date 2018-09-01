@@ -4,7 +4,7 @@ FROM python:3.6
 ARG TARGET_UID
 
 # Install buildpack dependencies.
-RUN pip install boto3==1.4.7 pyyaml==3.12
+RUN pip install boto3==1.4.7 pyyaml==3.12 websockets==4.0.1
 
 # Copy the current directory contents into the container at /app
 COPY . /app
