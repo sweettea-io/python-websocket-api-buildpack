@@ -1,19 +1,15 @@
 import os
 
 
-class Envs(object):
+class EnvVars(object):
   required_envs = (
     'AWS_ACCESS_KEY_ID',
-    'AWS_SECRET_ACCESS_KEY',
     'AWS_REGION_NAME',
-    'S3_BUCKET_NAME',
-    'DATASET_DB_URL',
-    'REPO_SLUG',
-    'REPO_UID',
-    'CLIENT_ID',
-    'CLIENT_SECRET',
-    'INTERNAL_MSG_TOKEN',
-    'REDIS_URL'
+    'AWS_SECRET_ACCESS_KEY',
+    'LOG_STREAM_KEY',
+    'MODEL_STORAGE_URL',
+    'MODEL_STORAGE_FILE_PATH',
+    'PROJECT_UID'
   )
 
   def __init__(self):
@@ -21,13 +17,10 @@ class Envs(object):
 
   def set_envs(self):
     for env in self.required_envs:
-      # Ensure env var exists
+      # Ensure env var exists.
       if env not in os.environ:
-        print('Not starting API. Required env var {} not provided.'.format(env))
+        print('{} must be provided as an environment variable in order to run this buildpack.'.format(env))
         exit(1)
 
-      # Make env var accessible as an attribute
+      # Make env var accessible as an attribute.
       setattr(self, env, os.environ[env])
-
-
-envs = Envs()

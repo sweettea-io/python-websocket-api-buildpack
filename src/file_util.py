@@ -1,5 +1,5 @@
 """
-Helper methods related to files or their respective paths
+Utility methods related to files or their respective paths.
 """
 import os
 import shutil
@@ -37,27 +37,26 @@ def extract_in_place(archive_path):
 
   Ex:
     extract_in_place('path/to/archive.zip')
-    # => creates 'path/to/archive/' directory
+    # => creates 'path/to/archive/' directory and removes original 'path/to/archive.zip' file.
 
   :param str archive_path: Path to zipfile
   :return: Path to directory where zipfile contents were extracted
   :rtype: str
   """
-  # Comments using values from example of archive_path='/path/to/model.zip
-  filename_w_ext = archive_path.split('/').pop()        # model.zip
-  ext = filename_w_ext.split('.').pop()                 # zip
-  extract_dir = archive_path[:-(len(ext) + 1)]          # /path/to/model
+  filename_w_ext = archive_path.split('/').pop()  # e.g. model.zip
+  ext = filename_w_ext.split('.').pop()           # e.g. zip
+  extract_dir = archive_path[:-(len(ext) + 1)]    # e.g. /path/to/model
 
-  # Remove the destination dir if it already exists
+  # Remove destination dir if it already exists.
   if os.path.exists(extract_dir) and os.path.isdir(extract_dir):
     shutil.rmtree(extract_dir)
 
-  # Unpack the archive
+  # Unpack the archive.
   archive = zipfile.ZipFile(archive_path)
   archive.extractall(extract_dir)
   archive.close()
 
-  # Remove the archive file
+  # Remove the archive file.
   if os.path.exists(archive_path):
     os.remove(archive_path)
 
