@@ -12,7 +12,7 @@ class RequestManager(object):
   def register_handler(self, name, handler):
     self.handlers[name] = handler
 
-  def handle(self, ws):
+  async def handle(self, ws):
     # Parse request headers.
     headers = self._parse_headers(ws)
 
@@ -25,19 +25,9 @@ class RequestManager(object):
       return
 
     async for message in ws:
-      self._handle_message(ws, message)
+      await self._handle_message(ws, message)
 
-  def _parse_headers(self, ws):
-    return dict(ws.request_headers.items()) or {}
-
-  def _is_authed_req(self, headers):
-    for k, v in self.auth_headers.items():
-      if headers.get(k) != v:
-        return False
-
-    return True
-
-  def _handle_message(self, ws, message):
+  async def _handle_message(self, ws, message):
     # Attempt to parse JSON request message.
     try:
       payload = json.loads(message) or {}
@@ -64,3 +54,13 @@ class RequestManager(object):
       resp_payload = CONFIG_FUNC_CALL_FAILED
 
     await ws.send(json.dumps(resp_payload))
+
+  def _parse_headers(self, ws):
+    return dict(ws.request_headers.items()) or {}
+
+  def _is_authed_req(self, headers):
+    for k, v in self.auth_headers.items():
+      if headers.get(k) != v:
+        return False
+
+    return True

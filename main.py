@@ -102,7 +102,7 @@ def perform():
 
   # Define function to serve forever.
   async def server(ws):
-    req_manager.handle(ws)
+    await req_manager.handle(ws)
 
   # Start socket server.
   asyncio.get_event_loop().run_until_complete(websockets.serve(server, definitions.host, definitions.port))
