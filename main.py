@@ -1,121 +1,114 @@
 import asyncio
 import importlib
-import json
 import os
 import websockets
-import yaml
 
 
-def read_config(config_path):
-  with open(config_path) as f:
-    config = yaml.load(f)
-
-  if type(config) != dict or 'predict' not in config or 'model' not in config:
-    print('Not starting API. Invalid config file: {}'.format(config))
+def ensure_internal_modules_accessible():
+  if not os.environ.get('PROJECT_UID'):
+    print('PROJECT_UID must be provided as an environment variable in order to run this buildpack.')
     exit(1)
 
-  return config
 
+def get_internal_modules():
+  try:
+    config = get_src_mod('config')
+    definitions = get_src_mod('definitions')
+    envs = get_src_mod('envs')
+    model_fetcher = get_src_mod('model_fetcher')
+    req = get_src_mod('req')
+    responses = get_src_mod('responses')
 
-def get_exported_method(config, key=None):
-  module_str, function_str = config.get(key).split(':')
-
-  if not module_str:
-    print('No module specified for config method({}={}).'.format(key, config.get(key)))
+    return config, definitions, envs, model_fetcher, req, responses
+  except BaseException as e:
+    print('Internal module reference failed: {}'.format(e))
     exit(1)
-
-  module = importlib.import_module(module_str)
-
-  if not module:
-    print('No module to import at destination: {}'.format(module_str))
-    exit(1)
-
-  if not hasattr(module, function_str):
-    print('No function named {} exists on module {}'.format(function_str, module_str))
-    exit(1)
-
-  return getattr(module, function_str)
 
 
 def get_src_mod(name):
-  return importlib.import_module('.'.join((os.environ.get('REPO_UID'), name)))
+  return importlib.import_module('.'.join((os.environ.get('PROJECT_UID'), name)))
 
 
-def auth_client(headers, defs, envs):
-  return headers.get(defs.client_id_header) == envs.CLIENT_ID and \
-         headers.get(defs.client_secret_header) == envs.CLIENT_SECRET
+def get_validated_config(config_module, path):
+  try:
+    cfg = config_module.Config(path)
+
+    if not cfg.validate_train_config():
+      raise BaseException('Invalid SweetTea configuration file.')
+
+    return cfg
+  except BaseException as e:
+    print(e)
+    exit(1)
+
+
+def get_config_func(func_path):
+  # Split function path into ['<module_path>', '<function_name>']
+  module_path, func_name = func_path.rsplit(':', 1)
+
+  if not module_path:
+    print('No module included in config function path: {}.'.format(func_path))
+    exit(1)
+
+  # Import module by path.
+  mod = importlib.import_module(module_path)
+
+  # Ensure module exists.
+  if not mod:
+    print('No module to import at destination: {}'.format(module_path))
+    exit(1)
+
+  # Ensure function exists on module.
+  if not hasattr(mod, func_name):
+    print('No function named {} exists on module {}'.format(func_name, module_path))
+    exit(1)
+
+  # Return reference to module function.
+  return getattr(mod, func_name)
 
 
 def perform():
-  # Get internal src modules
-  envs = get_src_mod('envs').envs
-  definitions = get_src_mod('definitions')
-  responses = get_src_mod('responses')
-  model_fetcher = get_src_mod('model_fetcher')
-  pyredis = get_src_mod('pyredis')
+  """
+  Perform executes the following actions:
 
-  # Read the project's config file.
-  config = read_config(definitions.config_path)
+    1. Download model from cloud storage
+    2. Create websocket server to host model's predictions
+  """
+  # Get reference to internal src modules.
+  config, definitions, envs, model_fetcher, req, responses = get_internal_modules()
 
-  # Download the trained model from S3.
-  model_fetcher.download_model(config.get('model'))
+  # Create EnvVars instance from environment variables.
+  env_vars = envs.EnvVars()
 
-  # Get exported config methods.
-  predict = get_exported_method(config, key='predict')
+  # Create Config instance from SweetTea config file.
+  cfg = get_validated_config(config, definitions.config_path)
 
-  # Register socket message handlers.
-  handlers = {
-    'predict': predict
-  }
+  # Download model from cloud storage.
+  model_fetcher.download_model(cloud_storage_url=env_vars.MODEL_STORAGE_URL,
+                               cloud_model_path=env_vars.MODEL_STORAGE_FILE_PATH,
+                               rel_local_model_path=cfg.model_path())
 
-  async def server(websocket, path):
-    headers = dict(websocket.request_headers.items()) or {}
-    authed = auth_client(headers, definitions, envs)
+  # Create a RequestManager instance.
+  req_manager = req.RequestManager(auth_headers={
+    definitions.client_id_header: env_vars.CLIENT_ID,
+    definitions.client_secret_header: env_vars.CLIENT_SECRET,
+  })
 
-    if not authed:
-      await websocket.send(json.dumps(responses.UNAUTHORIZED))
-      return
+  # Get ref to config functions.
+  predict = get_config_func(cfg.predict_func())
 
-    async for message in websocket:
-      try:
-        payload = json.loads(message) or {}
-      except:
-        await websocket.send(json.dumps(responses.INVALID_JSON_PAYLOAD))
-        return
+  # Register predict function as a request handler.
+  req_manager.register_handler('predict', predict)
 
-      handler_name = payload.get('handler')
-      req_data = payload.get('data')
+  # Define function to serve forever.
+  async def server(ws):
+    req_manager.handle(ws)
 
-      if not handler_name:
-        await websocket.send(json.dumps(responses.UNSUPPORTED_HANDLER))
-        return
-
-      handler = handlers.get(handler_name)
-
-      if not handler:
-        await websocket.send(json.dumps(responses.UNSUPPORTED_HANDLER))
-        return
-
-      try:
-        # Call the handler method passing in the request data
-        resp_data = handler(req_data)
-
-        resp_payload = {
-          'ok': True,
-          'data': resp_data
-        }
-      except BaseException:
-        resp_payload = responses.EXPORTED_FUNC_CALL_FAILED
-
-      await websocket.send(json.dumps(resp_payload))
-
-      # Log request to redis
-      pyredis.log_request(envs.REPO_UID)
-
-  # Start socket server (run forever)
+  # Start socket server.
   asyncio.get_event_loop().run_until_complete(websockets.serve(server, definitions.host, definitions.port))
   asyncio.get_event_loop().run_forever()
 
 
 if __name__ == '__main__':
+  ensure_internal_modules_accessible()
   perform()
