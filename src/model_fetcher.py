@@ -6,10 +6,10 @@ from boto3.s3.transfer import TransferConfig, S3Transfer
 from urllib.parse import urlparse
 
 
-def download_model(cloud_storage_url=None, cloud_model_path=None, rel_local_model_path=None):
+def download_model(cloud_storage_url=None, cloud_model_path=None, rel_local_model_path=None, **kwargs):
   # Configure S3 Bucket before downloading model.
   bucket_name = urlparse(cloud_storage_url).netloc
-  transfer = S3Transfer(boto3.client('s3'), TransferConfig(use_threads=False))
+  transfer = S3Transfer(boto3.client('s3', **kwargs), TransferConfig(use_threads=False))
 
   # Get exact cloud and local model paths for download.
   ext, cloud_path, dest = get_paths_for_download(cloud_model_path, rel_local_model_path)

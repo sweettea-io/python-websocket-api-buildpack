@@ -4,20 +4,22 @@ import os
 import websockets
 
 
-def ensure_internal_modules_accessible():
-  if not os.environ.get('PROJECT_UID'):
-    print('PROJECT_UID must be provided as an environment variable in order to run this buildpack.')
+def get_internal_modules(env_prefix):
+  # Construct key for project uid env var.
+  project_uid_key = '{}PROJECT_UID'.format(env_prefix)
+  project_uid = os.environ.get(project_uid_key)
+
+  if not project_uid:
+    print('{} must be provided as an environment variable in order to run this buildpack.'.format(project_uid_key))
     exit(1)
 
-
-def get_internal_modules():
   try:
-    config = get_src_mod('config')
-    definitions = get_src_mod('definitions')
-    envs = get_src_mod('envs')
-    model_fetcher = get_src_mod('model_fetcher')
-    req = get_src_mod('req')
-    responses = get_src_mod('responses')
+    config = get_src_mod(project_uid, 'config')
+    definitions = get_src_mod(project_uid, 'definitions')
+    envs = get_src_mod(project_uid, 'envs')
+    model_fetcher = get_src_mod(project_uid, 'model_fetcher')
+    req = get_src_mod(project_uid, 'req')
+    responses = get_src_mod(project_uid, 'responses')
 
     return config, definitions, envs, model_fetcher, req, responses
   except BaseException as e:
@@ -25,8 +27,8 @@ def get_internal_modules():
     exit(1)
 
 
-def get_src_mod(name):
-  return importlib.import_module('.'.join((os.environ.get('PROJECT_UID'), name)))
+def get_src_mod(parent_mod, name):
+  return importlib.import_module('{}.{}'.format(parent_mod, name))
 
 
 def get_validated_config(config_module, path):
@@ -74,11 +76,14 @@ def perform():
     1. Download model from cloud storage
     2. Create websocket server to host model's predictions
   """
+  # Get internal environment variable prefix.
+  env_prefix = os.environ.get('SWEET_TEA_INTERNAL_ENV_PREFIX', '')
+
   # Get reference to internal src modules.
-  config, definitions, envs, model_fetcher, req, responses = get_internal_modules()
+  config, definitions, envs, model_fetcher, req, responses = get_internal_modules(env_prefix)
 
   # Create EnvVars instance from environment variables.
-  env_vars = envs.EnvVars()
+  env_vars = envs.EnvVars(prefix=env_prefix)
 
   # Create Config instance from SweetTea config file.
   cfg = get_validated_config(config, definitions.config_path)
@@ -86,7 +91,10 @@ def perform():
   # Download model from cloud storage.
   model_fetcher.download_model(cloud_storage_url=env_vars.MODEL_STORAGE_URL,
                                cloud_model_path=env_vars.MODEL_STORAGE_FILE_PATH,
-                               rel_local_model_path=cfg.model_path())
+                               rel_local_model_path=cfg.model_path(),
+                               region_name=env_vars.AWS_REGION_NAME,
+                               aws_access_key_id=env_vars.AWS_ACCESS_KEY_ID,
+                               aws_secret_access_key=env_vars.AWS_SECRET_ACCESS_KEY)
 
   # Create a RequestManager instance.
   req_manager = req.RequestManager(auth_headers={
@@ -110,5 +118,4 @@ def perform():
 
 
 if __name__ == '__main__':
-  ensure_internal_modules_accessible()
   perform()
