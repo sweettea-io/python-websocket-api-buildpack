@@ -35,7 +35,7 @@ def get_validated_config(config_module, path):
   try:
     cfg = config_module.Config(path)
 
-    if not cfg.validate_train_config():
+    if not cfg.validate_api_config():
       raise BaseException('Invalid SweetTea configuration file.')
 
     return cfg
