@@ -108,12 +108,11 @@ def perform():
   # Register predict function as a request handler.
   req_manager.register_handler('predict', predict)
 
-  # Define function to serve forever.
-  async def server(ws):
-    await req_manager.handle(ws)
+  # Start socket server to host requests.
+  asyncio.get_event_loop().run_until_complete(websockets.serve(req_manager.handle, definitions.host, definitions.port))
 
-  # Start socket server.
-  asyncio.get_event_loop().run_until_complete(websockets.serve(server, definitions.host, definitions.port))
+  print('Listening on port {}...'.format(definitions.port))
+
   asyncio.get_event_loop().run_forever()
 
 

@@ -1,5 +1,6 @@
 import json
 from .responses import *
+from websockets.exceptions import ConnectionClosed
 
 
 class RequestManager(object):
@@ -12,7 +13,7 @@ class RequestManager(object):
   def register_handler(self, name, handler):
     self.handlers[name] = handler
 
-  async def handle(self, ws):
+  async def handle(self, ws, path):
     # Parse request headers.
     headers = self._parse_headers(ws)
 
@@ -24,8 +25,11 @@ class RequestManager(object):
       await ws.send(json.dumps(UNAUTHORIZED))
       return
 
-    async for message in ws:
-      await self._handle_message(ws, message)
+    try:
+      async for message in ws:
+        await self._handle_message(ws, message)
+    except ConnectionClosed:
+      return
 
   async def _handle_message(self, ws, message):
     # Attempt to parse JSON request message.
